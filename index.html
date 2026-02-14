@@ -3,28 +3,20 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>🎁 황지짱 생축</title>
+  <title>🎁 황지짱 생축 - 우주선 미션</title>
   <style>
-    :root { --bg:#0b0f1a; --ui:#e8eefc; --dim:#9bb0d6; --accent:#7cf7c1; }
+    :root { --bg:#0b0f1a; --ui:#e8eefc; --dim:#9bb0d6; --accent:#7cf7c1; --warn:#ff6b6b; }
     html,body { margin:0; height:100%; background:var(--bg); color:var(--ui); font-family:system-ui,-apple-system,Segoe UI,Roboto,Apple SD Gothic Neo,Noto Sans KR,sans-serif; }
     .wrap { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; padding:16px; }
     canvas { image-rendering: pixelated; image-rendering: crisp-edges; border:2px solid #24304d; border-radius:12px; background: #050814; }
     .hud { width:min(720px, 96vw); display:flex; justify-content:space-between; align-items:center; gap:10px; }
     .panel { display:flex; gap:10px; align-items:center; flex-wrap:wrap; color:var(--dim); font-size:14px; }
     .kbd { padding:2px 8px; border:1px solid #2b3a5d; border-radius:8px; color:var(--ui); background:#0f1730; }
-    button {
-      cursor:pointer; border:1px solid #2b3a5d; background:#0f1730; color:var(--ui);
-      border-radius:10px; padding:8px 12px; font-weight:600;
-    }
+    button { cursor:pointer; border:1px solid #2b3a5d; background:#0f1730; color:var(--ui); border-radius:10px; padding:8px 12px; font-weight:700; }
     button:hover { border-color:#3b4f80; }
-    .modal {
-      position:fixed; inset:0; display:none; align-items:center; justify-content:center;
-      background:rgba(0,0,0,.6); padding:16px;
-    }
-    .card {
-      width:min(520px, 96vw); background:#0f1730; border:1px solid #2b3a5d; border-radius:16px;
-      padding:18px; box-shadow: 0 10px 30px rgba(0,0,0,.35);
-    }
+
+    .modal { position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,.6); padding:16px; }
+    .card { width:min(560px, 96vw); background:#0f1730; border:1px solid #2b3a5d; border-radius:16px; padding:18px; box-shadow: 0 10px 30px rgba(0,0,0,.35); }
     .card h2 { margin:0 0 8px; font-size:18px; }
     .card p { margin:8px 0; color:var(--dim); line-height:1.5; }
     .secret {
@@ -33,15 +25,18 @@
       color: var(--accent);
       user-select: all;
       word-break: break-all;
+      font-size: 16px;
     }
     .row { display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; }
-    a { color: var(--accent); }
+    .big { font-size:22px; font-weight:900; letter-spacing:-0.02em; }
+    .badge { padding:2px 8px; border-radius:999px; border:1px solid #2b3a5d; background:#071025; color:var(--ui); font-size:12px; }
   </style>
 </head>
 <body>
   <div class="wrap">
     <div class="hud">
       <div class="panel">
+        <span class="badge">🎂 황지짱 생축</span>
         <span>이동 <span class="kbd">←</span><span class="kbd">→</span> / 사격 <span class="kbd">Space</span></span>
         <span>리셋 <span class="kbd">R</span></span>
       </div>
@@ -54,23 +49,24 @@
     <canvas id="c" width="720" height="420"></canvas>
 
     <div class="panel">
-      <span id="status">미션: 장애물을 피하여 60초 버티고 행성에 착륙하라 🚀</span>
+      <span id="status">미션: 우주를 뚫고 75초 생존해 행성에 착륙하라 🚀</span>
     </div>
   </div>
 
   <!-- Gift modal -->
   <div class="modal" id="modal">
     <div class="card">
-      <h2>🎉 미션 성공! 행성에 도착했다!</h2>
-      <p>보물 상자를 열면 "진짜 선물"을 받기 위한 지령이 나온다</p>
+      <h2>🎉 미션 성공! 행성 도착!</h2>
+      <p>보물 상자를 열면 “진짜 선물”을 받기 위한 지령이 나온다.</p>
       <div class="row">
         <button id="btnOpenChest">보물상자 열기</button>
         <button id="btnClose">닫기</button>
       </div>
+
       <div id="giftArea" style="display:none;">
         <p class="big" style="margin-top:12px;color:#e8eefc;">📜 아래 코드를 민지에게 전달하시오</p>
         <div class="secret" id="fakeCode">HZ-BDAY-9Q7K-2M5P</div>
-        <p style="font-size:12px;color:#7f93bd;">※ 이 코드는 “가짜”이며, 민지에게 보내면 진짜 선물이 소환됩니다</p>
+        <p style="font-size:12px;color:#7f93bd;">※ 이 코드는 “가짜”이며, 민지에게 보내면 진짜 선물이 소환됩니다.</p>
       </div>
     </div>
   </div>
@@ -81,12 +77,12 @@
   const ctx = canvas.getContext('2d');
   const W = canvas.width, H = canvas.height;
 
-  // --- CONFIG (you customize here) ---
-  const SURVIVE_TIME = 60;          // seconds to reach planet
-  const FAKE_CODE = "HZ-BDAY-9Q7K-2M5P";
-  // -----------------------------------
+  // ---- CONFIG ----
+  const SURVIVE_TIME = 75;                 // 난이도↑: 더 오래 생존
+  const FAKE_CODE = "HZ-BDAY-9Q7K-2M5P";   // 가짜 코드
+  // ---------------
 
-  // UI refs
+  // UI
   const statusEl = document.getElementById('status');
   const btnStart = document.getElementById('btnStart');
   const btnMute = document.getElementById('btnMute');
@@ -94,10 +90,10 @@
   const btnOpenChest = document.getElementById('btnOpenChest');
   const btnClose = document.getElementById('btnClose');
   const giftArea = document.getElementById('giftArea');
-  const giftCodeEl = document.getElementById('giftCode');
+  const fakeCodeEl = document.getElementById('fakeCode');
   fakeCodeEl.textContent = FAKE_CODE;
 
-  // Simple sound (beep)
+  // Simple sound
   let soundOn = true;
   const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   function beep(freq=440, dur=0.05, gain=0.03) {
@@ -112,7 +108,7 @@
     o.stop(audioCtx.currentTime + dur);
   }
 
-    // Game state
+  // Game state
   let running = false;
   let last = 0;
   let elapsed = 0;
@@ -164,7 +160,7 @@
 
     for (let i=0;i<140;i++) stars.push({ x:Math.random()*W, y:Math.random()*H, s:1+Math.random()*2 });
 
-    statusEl.textContent = `미션: “황지짱 생축” 우주를 뚫고 ${SURVIVE_TIME}초 생존해 행성에 착륙하라 🚀`;
+    statusEl.textContent = `미션: 우주를 뚫고 ${SURVIVE_TIME}초 생존해 행성에 착륙하라 🚀`;
     giftArea.style.display = "none";
     modal.style.display = "none";
     btnStart.textContent = "Start";
@@ -644,3 +640,4 @@
 </script>
 </body>
 </html>
+
