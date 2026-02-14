@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>🎁 황지짱 생축 - 우주선 미션</title>
+  <title>🎁 황지짱 생축 게임</title>
   <style>
     :root { --bg:#0b0f1a; --ui:#e8eefc; --dim:#9bb0d6; --accent:#7cf7c1; --warn:#ff6b6b; }
     html,body { margin:0; height:100%; background:var(--bg); color:var(--ui); font-family:system-ui,-apple-system,Segoe UI,Roboto,Apple SD Gothic Neo,Noto Sans KR,sans-serif; }
@@ -37,7 +37,6 @@
   <div class="wrap">
     <div class="hud">
       <div class="panel">
-        <span class="badge">🎂 황지짱 생축</span>
         <span>이동 <span class="kbd">←</span><span class="kbd">→</span> / 사격 <span class="kbd">Space</span></span>
         <span>리셋 <span class="kbd">R</span></span>
       </div>
@@ -66,17 +65,17 @@
     </div>
 
     <div class="panel">
-      <span id="status">미션: 우주를 뚫고 40초 생존해 행성에 착륙하라 🚀</span>
+      <span id="status">미션: 우주를 뚫고 40초 생존해 선물 상자를 획득하라 🚀</span>
     </div>
   </div>
 
   <!-- Gift modal -->
   <div class="modal" id="modal">
     <div class="card">
-      <h2>🎉 미션 성공! 행성 도착!</h2>
-      <p>보물 상자를 열면 “진짜 선물”을 받기 위한 지령이 나온다.</p>
+      <h2>🎉 미션 성공!</h2>
+      <p>선물 상자를 열면 “진짜 선물”을 받기 위한 지령이 나온다.</p>
       <div class="row">
-        <button id="btnOpenChest">보물상자 열기</button>
+        <button id="btnOpenChest">선물 상자 열기</button>
         <button id="btnClose">닫기</button>
       </div>
 
@@ -245,7 +244,7 @@
 
     for (let i=0;i<140;i++) stars.push({ x:Math.random()*W, y:Math.random()*H, s:1+Math.random()*2 });
 
-    statusEl.textContent = `미션: 우주를 뚫고 ${SURVIVE_TIME}초 생존해 행성에 착륙하라 🚀`;
+    statusEl.textContent = `미션: 우주를 뚫고 ${SURVIVE_TIME}초 생존해 선물 상자를 획득하라 🚀`;
     giftArea.style.display = "none";
     modal.style.display = "none";
     btnStart.textContent = "Start";
@@ -292,7 +291,7 @@
       w: 220,
       h: 160,
       vy: 70,        // 내려오는 속도
-      hp: 15         // 맞춰야 하는 총알 수(난이도 조절 포인트)
+      hp: 20         // 맞춰야 하는 총알 수(난이도 조절 포인트)
     };
     bossSpawned = true;
     toast("🎂 보스 케이크 운석 등장! 10초 안에 박살!!", 2.6);
@@ -384,7 +383,6 @@
             return;
           }
         }
-      }
       }
     }
 
@@ -680,12 +678,12 @@
 
     ctx.fillStyle = "#9bb0d6";
     ctx.font = "14px system-ui, -apple-system, Segoe UI, sans-serif";
-    ctx.fillText("미션: 60초 생존 + 이벤트 견뎌내기 → 행성 착륙 → 보물상자", 22, 116);
+    ctx.fillText("미션: 40초 생존 → 선물 상자", 22, 116);
     ctx.fillText("← → 이동 / Space 사격 / R 리셋  (난이도: 상)", 22, 138);
 
     ctx.fillStyle = "#7cf7c1";
     ctx.font = "13px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
-    ctx.fillText("팁: 파워업 상자(S/R)를 먹으면 생존이 쉬워짐", 22, 162);
+    ctx.fillText("팁: 파워업 상자(🛡️/⚡)를 먹으면 생존이 쉬워짐", 22, 162);
   }
 
   function drawToast() {
@@ -813,9 +811,8 @@
       ctx.fillRect(p.x-8, p.y-8, 16, 16);
       ctx.strokeStyle = "#2b3a5d";
       ctx.strokeRect(p.x-8, p.y-8, 16, 16);
-      ctx.fillStyle = (p.type==="shield") ? "#7cf7c1" : "#ffd36a";
-      ctx.font = "900 12px system-ui, -apple-system, Segoe UI, sans-serif";
-      ctx.fillText(p.type==="shield" ? "S" : "R", p.x-4, p.y+5);
+      ctx.font = "16px system-ui, -apple-system, Segoe UI, sans-serif";
+      ctx.fillText(p.type==="shield" ? "🛡️" : "⚡", p.x-8, p.y+6);
 
 
     }
