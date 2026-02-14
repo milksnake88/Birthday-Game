@@ -92,13 +92,13 @@
 (() => {
   const canvas = document.getElementById('c');
   const ctx = canvas.getContext('2d');
-  let W = 720, H = 420;
+  let W = 720, H = 720;
   
   function resizeCanvas() {
     // 화면 폭에 맞춰 16:9 비율 유지(720x420 비율과 동일)
     const maxW = Math.min(720, Math.floor(window.innerWidth * 0.96));
     const newW = Math.max(320, maxW);              // 너무 작아지는 거 방지
-    const newH = Math.floor(newW * (420 / 720));
+    const newH = newW;
   
     // 현재 위치 비율 보존(리사이즈 시 순간이동 방지)
     const xRatio = ship ? (ship.x / Math.max(1, W)) : 0.5;
@@ -211,6 +211,8 @@
   let pickups = [];           // 파워업 상자
   let stars = [];
   let fireworks = [];
+  let boss = null;
+  let bossSpawned = false;
 
   // Events
   let eventTimer = 0;
@@ -283,6 +285,20 @@
     rocks.push({ x, y:-40, r:size, vx, vy, kind });
   }
 
+  function spawnBossCake() {
+    boss = {
+      x: W / 2,
+      y: -120,
+      w: 220,
+      h: 160,
+      vy: 70,        // 내려오는 속도
+      hp: 10         // 맞춰야 하는 총알 수(난이도 조절 포인트)
+    };
+    bossSpawned = true;
+    toast("🎂 보스 케이크 운석 등장! 10초 안에 박살!!", 2.6);
+    beep(140, 0.12, 0.06);
+  }
+
   function spawnPickup() {
     const x = 40 + Math.random()*(W-80);
     const type = Math.random() < 0.5 ? "shield" : "rapid";
@@ -338,6 +354,46 @@
   }
 
   function update(dt) {
+    // Boss spawn: 10초 남았을 때 1회 등장
+    const remain = SURVIVE_TIME - elapsed;
+    if (!bossSpawned && remain <= 10) {
+      spawnBossCake();
+    }
+    // Boss update
+    if (boss) {
+      boss.y += boss.vy * dt;
+    
+      // 총알이 보스에 맞으면 hp 감소
+      for (let j = bullets.length - 1; j >= 0; j--) {
+        const b = bullets[j];
+    
+        const hit =
+          b.x >= boss.x - boss.w/2 && b.x <= boss.x + boss.w/2 &&
+          b.y >= boss.y - boss.h/2 && b.y <= boss.y + boss.h/2;
+    
+        if (hit) {
+          bullets.splice(j, 1);
+          boss.hp -= 1 * (rapid > 0 ? 2 : 1);   // 연사 파워업이면 더 많이 깎임
+          score += 2;
+          beep(620, 0.02, 0.03);
+    
+          if (boss.hp <= 0) {
+            // 폭죽 + 즉시 클리어
+            spawnFireworks(180);
+            win();
+            return;
+          }
+        }
+      }
+    
+      // 보스가 바닥까지 오면 실패(선택)
+      if (boss.y > H - 90) {
+        toast("💥 보스가 착지했다! 끝!", 1.8);
+        lose();
+        return;
+      }
+    }
+
     elapsed += dt;
     if (msgT > 0) msgT -= dt;
 
@@ -504,7 +560,15 @@
     rocks = rocks.filter(r => r.y < H+60);
 
     // Win condition
-    if (elapsed >= SURVIVE_TIME) win();
+    if (elapsed >= SURVIVE_TIME) {
+      if (bossSpawned && boss) {
+        // 보스가 살아있으면 시간만으로는 클리어 불가
+        toast("🎂 보스를 처치해야 클리어!", 1.2);
+      } else {
+        win();
+      }
+    }
+
 
     // Status
     statusEl.textContent =
@@ -664,6 +728,38 @@
       ctx.beginPath(); ctx.arc(r.x, r.y, r.r, 0, Math.PI*2); ctx.fill();
       ctx.fillStyle = "#8aa0d6";
       ctx.fillRect(r.x - r.r/2, r.y - r.r/2, 3, 3);
+    }
+    // Boss draw (giant cake)
+    if (boss) {
+      const x = boss.x, y = boss.y;
+    
+      // 케이크 몸통
+      ctx.fillStyle = "#ff9ecb";
+      ctx.fillRect(x - boss.w/2, y - boss.h/2, boss.w, boss.h);
+    
+      // 크림 층
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(x - boss.w/2, y - boss.h/2, boss.w, 18);
+    
+      // 딸기 장식(여러 개)
+      ctx.fillStyle = "#ff3b6b";
+      for (let i=0; i<7; i++) {
+        ctx.beginPath();
+        ctx.arc(x - boss.w/2 + 25 + i*30, y - boss.h/2 - 6, 6, 0, Math.PI*2);
+        ctx.fill();
+      }
+    
+      // HP 바
+      const barW = 240;
+      const ratio = Math.max(0, boss.hp) / 80; // spawnBossCake hp랑 맞춰야 함
+      ctx.fillStyle = "rgba(0,0,0,0.35)";
+      ctx.fillRect(W/2 - barW/2, 54, barW, 10);
+      ctx.fillStyle = "#7cf7c1";
+      ctx.fillRect(W/2 - barW/2, 54, barW * ratio, 10);
+    
+      ctx.fillStyle = "#e8eefc";
+      ctx.font = "700 12px system-ui";
+      ctx.fillText("BOSS CAKE", W/2 - barW/2, 48);
     }
 
     // cake meteors 🍰
