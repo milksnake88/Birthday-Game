@@ -29,6 +29,7 @@
     }
     .row { display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; }
     .big { font-size:22px; font-weight:900; letter-spacing:-0.02em; }
+    canvas { width: min(720px, 96vw); height: auto; }
     .badge { padding:2px 8px; border-radius:999px; border:1px solid #2b3a5d; background:#071025; color:var(--ui); font-size:12px; }
   </style>
 </head>
@@ -46,7 +47,7 @@
       </div>
     </div>
 
-    <canvas id="c" width="720" height="420"></canvas>
+    <canvas id="c"></canvas>
     <!-- Mobile touch controls -->
     <div id="touchUI" style="
       width:min(720px,96vw);
@@ -91,10 +92,40 @@
 (() => {
   const canvas = document.getElementById('c');
   const ctx = canvas.getContext('2d');
-  const W = canvas.width, H = canvas.height;
+  let W = 720, H = 420;
+  
+  function resizeCanvas() {
+    // 화면 폭에 맞춰 16:9 비율 유지(720x420 비율과 동일)
+    const maxW = Math.min(720, Math.floor(window.innerWidth * 0.96));
+    const newW = Math.max(320, maxW);              // 너무 작아지는 거 방지
+    const newH = Math.floor(newW * (420 / 720));
+  
+    // 현재 위치 비율 보존(리사이즈 시 순간이동 방지)
+    const xRatio = ship ? (ship.x / Math.max(1, W)) : 0.5;
+  
+    W = newW; H = newH;
+  
+    // CSS 표시 크기
+    canvas.style.width = W + "px";
+    canvas.style.height = H + "px";
+  
+    // 실제 렌더링 해상도(레티나 대응)
+    const dpr = Math.max(1, window.devicePixelRatio || 1);
+    canvas.width = Math.floor(W * dpr);
+    canvas.height = Math.floor(H * dpr);
+  
+    // 이후 그리기는 CSS 픽셀 단위로 하도록 스케일 적용
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  
+    if (ship) {
+      ship.x = Math.max(20, Math.min(W - 20, xRatio * W));
+      ship.y = H - 60;
+    }
+  }
+
 
   // ---- CONFIG ----
-  const SURVIVE_TIME = 60;                 // 난이도↑: 더 오래 생존
+  const SURVIVE_TIME = 40;                 // 난이도↑: 더 오래 생존
   const FAKE_CODE = "HZ-BDAY-9Q7K-2M5P";   // 가짜 코드
   // ---------------
 
@@ -302,8 +333,8 @@
       beep(260, 0.10, 0.05);
     }
 
-    // 이벤트 시작 시 90% 확률로 파워업 상자 1개
-    if (Math.random() < 0.9) spawnPickup();
+    // 이벤트 시작 시 100% 확률로 파워업 상자 1개
+    if (Math.random() < 1.0) spawnPickup();
   }
 
   function update(dt) {
@@ -332,7 +363,7 @@
       eventLeft -= dt;
       if (currentEvent === "meteor") {
         // 우주비 탄막: 작은 파편 생성
-        const rate = 6 + elapsed*0.12; // sec^-1
+        const rate = 3 + elapsed*0.12; // sec^-1
         const n = Math.random() < rate*dt ? 1 : 0;
         for (let i=0;i<n;i++) {
           const x = Math.random()*W;
@@ -749,6 +780,8 @@
   modal.addEventListener('click', (e) => { if (e.target === modal) modal.style.display = "none"; });
 
   // init
+  resizeCanvas();
+  window.addEventListener('resize', resizeCanvas);
   reset();
 })();
 </script>
