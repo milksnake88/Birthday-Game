@@ -65,7 +65,7 @@
     </div>
 
     <div class="panel">
-      <span id="status">미션: 우주를 뚫고 40초 생존해 선물 상자를 획득하라 🚀</span>
+      <span id="status">미션: 우주를 뚫고 30초 생존해 선물 상자를 획득하라 🚀</span>
     </div>
   </div>
 
@@ -124,7 +124,7 @@
 
 
   // ---- CONFIG ----
-  const SURVIVE_TIME = 40;                 // 난이도↑: 더 오래 생존
+  const SURVIVE_TIME = 30;                 // 난이도↑: 더 오래 생존
   const FAKE_CODE = "HZ-BDAY-9Q7K-2M5P";   // 가짜 코드
   // ---------------
 
@@ -379,17 +379,8 @@
           score += 2;
           beep(620, 0.02, 0.03);
     
-          if (boss.hp <= 0 && !victoryPending) {
-          
-            victoryPending = true;
-          
+          if (boss.hp <= 0) {
             spawnFireworks(180);
-          
-            // 3초 후 클리어
-            setTimeout(() => {
-              win();
-            }, 3000);
-          
             return;
           }
 
@@ -592,12 +583,7 @@
 
     // Win condition
     if (elapsed >= SURVIVE_TIME) {
-      if (bossSpawned && boss) {
-        // 보스가 살아있으면 시간만으로는 클리어 불가
-        toast("🎂 보스를 처치해야 클리어!", 1.2);
-      } else {
-        win();
-      }
+      win();
     }
 
 
