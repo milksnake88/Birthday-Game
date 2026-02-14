@@ -125,7 +125,7 @@
 
 
   // ---- CONFIG ----
-  const SURVIVE_TIME = 40;                 // 난이도↑: 더 오래 생존
+  const SURVIVE_TIME = 60;                 // 난이도↑: 더 오래 생존
   const FAKE_CODE = "HZ-BDAY-9Q7K-2M5P";   // 가짜 코드
   // ---------------
 
@@ -292,7 +292,7 @@
       w: 220,
       h: 160,
       vy: 70,        // 내려오는 속도
-      hp: 10         // 맞춰야 하는 총알 수(난이도 조절 포인트)
+      hp: 30         // 맞춰야 하는 총알 수(난이도 조절 포인트)
     };
     bossSpawned = true;
     toast("🎂 보스 케이크 운석 등장! 10초 안에 박살!!", 2.6);
@@ -425,7 +425,12 @@
           const x = Math.random()*W;
           const vy = 260 + Math.random()*240;
           const vx = (-60 + Math.random()*120);
-          shards.push({ x, y:-10, vx, vy, r: 5 + Math.random()*5 });
+          const r = 5 + Math.random()*5;
+          shards.push({
+            x, y:-10, vx, vy, r,
+            hp: (r > 8 ? 2 : 1)   // 큰 케이크는 2발, 작은 건 1발
+          });
+
         }
       }
       if (eventLeft <= 0) {
@@ -507,6 +512,29 @@
             beep(520, 0.04, 0.03);
           }
           break;
+        }
+      }
+    }
+    // Bullet vs shards (cake meteors)
+    for (let i = shards.length - 1; i >= 0; i--) {
+      const s = shards[i];
+      for (let j = bullets.length - 1; j >= 0; j--) {
+        const b = bullets[j];
+    
+        const dx = s.x - b.x, dy = s.y - b.y;
+        if (dx*dx + dy*dy < (s.r + 6) * (s.r + 6)) {
+          // hit!
+          bullets.splice(j, 1);
+          s.hp -= (rapid > 0 ? 2 : 1);  // 연사(rapid) 중이면 더 잘 부숨
+          score += 3;
+          beep(560, 0.03, 0.03);
+    
+          if (s.hp <= 0) {
+            shards.splice(i, 1);
+            score += 2;
+            beep(720, 0.04, 0.03);
+          }
+          break; // 한 총알은 한 번만 판정
         }
       }
     }
