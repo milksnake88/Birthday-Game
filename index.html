@@ -293,7 +293,7 @@
       w: 220,
       h: 160,
       vy: 70,        // 내려오는 속도
-      hp: 40         // 맞춰야 하는 총알 수(난이도 조절 포인트)
+      hp: 25         // 맞춰야 하는 총알 수(난이도 조절 포인트)
     };
     bossSpawned = true;
     toast("🎂 보스 케이크 운석 등장! 10초 안에 박살!!", 2.6);
@@ -358,12 +358,12 @@
   function update(dt) {
     // Boss spawn: 10초 남았을 때 1회 등장
     const remain = SURVIVE_TIME - elapsed;
-    if (!bossSpawned && remain <= 10) {
+    if (!bossSpawned && remain <= 12) {
       spawnBossCake();
     }
     // Boss update
     if (boss) {
-      boss.y += boss.vy * 0.5 * dt;
+      boss.y += boss.vy * 0.9 * dt;
     
       // 총알이 보스에 맞으면 hp 감소
       for (let j = bullets.length - 1; j >= 0; j--) {
