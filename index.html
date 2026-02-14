@@ -82,7 +82,7 @@
       <div id="giftArea" style="display:none;">
         <p class="big" style="margin-top:12px;color:#e8eefc;">📜 아래 코드를 민지에게 전달하시오</p>
         <div class="secret" id="fakeCode">HZ-BDAY-9Q7K-2M5P</div>
-        <p style="font-size:12px;color:#7f93bd;">※ 이 코드는 “가짜”이며, 민지에게 보내면 진짜 선물이 소환됩니다.</p>
+        <p style="font-size:12px;color:#7f93bd;">※ 진짜 선물이 소환됩니다.</p>
       </div>
     </div>
   </div>
@@ -293,7 +293,7 @@
       w: 220,
       h: 160,
       vy: 70,        // 내려오는 속도
-      hp: 15         // 맞춰야 하는 총알 수(난이도 조절 포인트)
+      hp: 40         // 맞춰야 하는 총알 수(난이도 조절 포인트)
     };
     bossSpawned = true;
     toast("🎂 보스 케이크 운석 등장! 10초 안에 박살!!", 2.6);
@@ -356,14 +356,14 @@
   }
 
   function update(dt) {
-    // Boss spawn: 20초 남았을 때 1회 등장
+    // Boss spawn: 10초 남았을 때 1회 등장
     const remain = SURVIVE_TIME - elapsed;
     if (!bossSpawned && remain <= 10) {
       spawnBossCake();
     }
     // Boss update
     if (boss) {
-      boss.y += boss.vy * dt;
+      boss.y += boss.vy * 0.5 * dt;
     
       // 총알이 보스에 맞으면 hp 감소
       for (let j = bullets.length - 1; j >= 0; j--) {
@@ -589,7 +589,7 @@
 
     // Status
     statusEl.textContent =
-      `🎂 황지짱 생축 | ⏱ ${(SURVIVE_TIME-elapsed).toFixed(1)}s | ❤️ ${hp} | 🛡️ ${shield>0?shield.toFixed(1):'0.0'} | ⚡ ${rapid>0?rapid.toFixed(1):'0.0'} | ⭐ ${score}`;
+      `🎂 지우 메롱 | ⏱ ${(SURVIVE_TIME-elapsed).toFixed(1)}s | ❤️ ${hp} | 🛡️ ${shield>0?shield.toFixed(1):'0.0'} | ⚡ ${rapid>0?rapid.toFixed(1):'0.0'} | ⭐ ${score}`;
     //  fireworks update
     for (const f of fireworks ) {
       f.x += f.vx * dt;
@@ -675,8 +675,8 @@
 
     ctx.fillStyle = "#9bb0d6";
     ctx.font = "14px system-ui, -apple-system, Segoe UI, sans-serif";
-    ctx.fillText("미션: 40초 생존 → 선물 상자", 22, 116);
-    ctx.fillText("← → 이동 / Space 사격 / R 리셋  (난이도: 상)", 22, 138);
+    ctx.fillText("미션: 우주를 뚫고 30초 생존해 선물 상자를 획득하라 🚀", 22, 116);
+    ctx.fillText("← → 이동", 22, 138);
 
     ctx.fillStyle = "#7cf7c1";
     ctx.font = "13px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
