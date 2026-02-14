@@ -1,0 +1,436 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>🎁 생일 우주선 미션</title>
+  <style>
+    :root { --bg:#0b0f1a; --ui:#e8eefc; --dim:#9bb0d6; --accent:#7cf7c1; }
+    html,body { margin:0; height:100%; background:var(--bg); color:var(--ui); font-family:system-ui,-apple-system,Segoe UI,Roboto,Apple SD Gothic Neo,Noto Sans KR,sans-serif; }
+    .wrap { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; padding:16px; }
+    canvas { image-rendering: pixelated; image-rendering: crisp-edges; border:2px solid #24304d; border-radius:12px; background: #050814; }
+    .hud { width:min(720px, 96vw); display:flex; justify-content:space-between; align-items:center; gap:10px; }
+    .panel { display:flex; gap:10px; align-items:center; flex-wrap:wrap; color:var(--dim); font-size:14px; }
+    .kbd { padding:2px 8px; border:1px solid #2b3a5d; border-radius:8px; color:var(--ui); background:#0f1730; }
+    button {
+      cursor:pointer; border:1px solid #2b3a5d; background:#0f1730; color:var(--ui);
+      border-radius:10px; padding:8px 12px; font-weight:600;
+    }
+    button:hover { border-color:#3b4f80; }
+    .modal {
+      position:fixed; inset:0; display:none; align-items:center; justify-content:center;
+      background:rgba(0,0,0,.6); padding:16px;
+    }
+    .card {
+      width:min(520px, 96vw); background:#0f1730; border:1px solid #2b3a5d; border-radius:16px;
+      padding:18px; box-shadow: 0 10px 30px rgba(0,0,0,.35);
+    }
+    .card h2 { margin:0 0 8px; font-size:18px; }
+    .card p { margin:8px 0; color:var(--dim); line-height:1.5; }
+    .secret {
+      margin-top:10px; padding:12px; border-radius:12px; background:#071025; border:1px dashed #3b4f80;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      color: var(--accent);
+      user-select: all;
+      word-break: break-all;
+    }
+    .row { display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; }
+    a { color: var(--accent); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="hud">
+      <div class="panel">
+        <span>이동 <span class="kbd">←</span><span class="kbd">→</span> / 사격 <span class="kbd">Space</span></span>
+        <span>리셋 <span class="kbd">R</span></span>
+      </div>
+      <div class="panel">
+        <button id="btnStart">Start</button>
+        <button id="btnMute">Sound: ON</button>
+      </div>
+    </div>
+
+    <canvas id="c" width="720" height="420"></canvas>
+
+    <div class="panel">
+      <span id="status">미션: 장애물을 피하며 60초 버티고 행성에 착륙하라 🚀</span>
+    </div>
+  </div>
+
+  <!-- Gift modal -->
+  <div class="modal" id="modal">
+    <div class="card">
+      <h2>🎉 미션 성공! 행성에 도착했다!</h2>
+      <p>보물 상자를 열어서 선물을 확인해봐.</p>
+      <div class="row">
+        <button id="btnOpenChest">보물상자 열기</button>
+        <button id="btnClose">닫기</button>
+      </div>
+      <div id="giftArea" style="display:none;">
+        <p>🎁 기프트카드 코드(복사 가능):</p>
+        <div class="secret" id="giftCode">REPLACE_WITH_YOUR_GIFTCARD_CODE</div>
+        <p style="font-size:13px;">원하면 “링크”도 넣을 수 있어: <a id="giftLink" href="#" target="_blank" rel="noreferrer">REPLACE_WITH_LINK</a></p>
+      </div>
+      <p style="font-size:12px;color:#7f93bd;margin-top:12px;">팁: 선물코드가 바로 보이는 게 싫으면, 코드 대신 “힌트 문장”만 보여주고 친구가 DM으로 답 맞추면 코드 보내는 방식도 가능.</p>
+    </div>
+  </div>
+
+<script>
+(() => {
+  const canvas = document.getElementById('c');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+
+  // --- CONFIG (you customize here) ---
+  const SURVIVE_TIME = 60;          // seconds to reach planet
+  const GIFT_CODE = "REPLACE_WITH_YOUR_GIFTCARD_CODE";
+  const GIFT_LINK = "REPLACE_WITH_LINK"; // optional, can be "https://..." or leave as "REPLACE_WITH_LINK"
+  // -----------------------------------
+
+  // UI refs
+  const statusEl = document.getElementById('status');
+  const btnStart = document.getElementById('btnStart');
+  const btnMute = document.getElementById('btnMute');
+  const modal = document.getElementById('modal');
+  const btnOpenChest = document.getElementById('btnOpenChest');
+  const btnClose = document.getElementById('btnClose');
+  const giftArea = document.getElementById('giftArea');
+  const giftCodeEl = document.getElementById('giftCode');
+  const giftLinkEl = document.getElementById('giftLink');
+
+  giftCodeEl.textContent = GIFT_CODE;
+  if (GIFT_LINK && GIFT_LINK.startsWith("http")) {
+    giftLinkEl.href = GIFT_LINK;
+    giftLinkEl.textContent = GIFT_LINK;
+  } else {
+    giftLinkEl.style.display = "none";
+  }
+
+  // Simple sound (beep)
+  let soundOn = true;
+  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  function beep(freq=440, dur=0.05, gain=0.03) {
+    if (!soundOn) return;
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type = 'square';
+    o.frequency.value = freq;
+    g.gain.value = gain;
+    o.connect(g).connect(audioCtx.destination);
+    o.start();
+    o.stop(audioCtx.currentTime + dur);
+  }
+
+  // Game state
+  let running = false;
+  let last = 0;
+  let t = 0;
+  let elapsed = 0;
+  let score = 0;
+  let hp = 3;
+
+  const keys = new Set();
+
+  const ship = {
+    x: W/2, y: H-60, w: 18, h: 18,
+    vx: 0, speed: 260,
+    cd: 0
+  };
+
+  let bullets = [];
+  let rocks = [];
+  let stars = [];
+
+  function reset() {
+    running = false;
+    last = 0;
+    t = 0;
+    elapsed = 0;
+    score = 0;
+    hp = 3;
+    ship.x = W/2; ship.y = H-60; ship.vx = 0; ship.cd = 0;
+    bullets = [];
+    rocks = [];
+    stars = [];
+    for (let i=0;i<120;i++) stars.push({ x:Math.random()*W, y:Math.random()*H, s:1+Math.random()*2 });
+    statusEl.textContent = `미션: 장애물을 피하며 ${SURVIVE_TIME}초 버티고 행성에 착륙하라 🚀`;
+    giftArea.style.display = "none";
+    modal.style.display = "none";
+    btnStart.textContent = "Start";
+    draw(0);
+  }
+
+  function start() {
+    if (running) return;
+    running = true;
+    btnStart.textContent = "Running…";
+    audioCtx.resume?.();
+    requestAnimationFrame(loop);
+  }
+
+  function win() {
+    running = false;
+    btnStart.textContent = "Restart";
+    modal.style.display = "flex";
+    beep(880, 0.08, 0.05);
+    beep(988, 0.08, 0.05);
+    beep(1175, 0.10, 0.06);
+  }
+
+  function lose() {
+    running = false;
+    btnStart.textContent = "Retry";
+    statusEl.textContent = "💥 추락! R을 눌러 다시 시작하거나 Start를 눌러 재도전!";
+    beep(120, 0.15, 0.07);
+  }
+
+  function spawnRock() {
+    const size = 10 + Math.random()*18;
+    const x = 20 + Math.random()*(W-40);
+    const vy = 110 + Math.random()*240 + elapsed*1.5; // gets harder
+    const vx = (-40 + Math.random()*80);
+    rocks.push({ x, y:-30, r:size, vx, vy });
+  }
+
+  function shoot() {
+    if (ship.cd > 0) return;
+    ship.cd = 0.18;
+    bullets.push({ x: ship.x, y: ship.y-10, vy: -520 });
+    beep(700, 0.03, 0.03);
+  }
+
+  function aabbCircle(ax, ay, aw, ah, cx, cy, cr) {
+    const px = Math.max(ax, Math.min(cx, ax+aw));
+    const py = Math.max(ay, Math.min(cy, ay+ah));
+    const dx = cx - px, dy = cy - py;
+    return (dx*dx + dy*dy) <= cr*cr;
+  }
+
+  function update(dt) {
+    t += dt;
+    elapsed += dt;
+
+    // Stars
+    for (const s of stars) {
+      s.y += (40 + s.s*30) * dt;
+      if (s.y > H) { s.y = -5; s.x = Math.random()*W; }
+    }
+
+    // Ship control
+    ship.vx = 0;
+    if (keys.has('ArrowLeft')) ship.vx -= ship.speed;
+    if (keys.has('ArrowRight')) ship.vx += ship.speed;
+    ship.x += ship.vx * dt;
+    ship.x = Math.max(20, Math.min(W-20, ship.x));
+
+    ship.cd = Math.max(0, ship.cd - dt);
+
+    // Shooting
+    if (keys.has('Space')) shoot();
+
+    // Bullets
+    for (const b of bullets) b.y += b.vy * dt;
+    bullets = bullets.filter(b => b.y > -30);
+
+    // Spawn rocks
+    const rate = 0.55 + Math.min(1.4, elapsed/25); // increases with time
+    if (Math.random() < rate * dt) spawnRock();
+
+    // Rocks move
+    for (const r of rocks) {
+      r.x += r.vx * dt;
+      r.y += r.vy * dt;
+      if (r.x < 15 || r.x > W-15) r.vx *= -1;
+    }
+
+    // Bullet vs rock
+    for (let i=rocks.length-1;i>=0;i--) {
+      const r = rocks[i];
+      for (let j=bullets.length-1;j>=0;j--) {
+        const b = bullets[j];
+        const dx = r.x - b.x, dy = r.y - b.y;
+        if (dx*dx + dy*dy < (r.r+3)*(r.r+3)) {
+          rocks.splice(i,1);
+          bullets.splice(j,1);
+          score += 10;
+          beep(520, 0.04, 0.03);
+          break;
+        }
+      }
+    }
+
+    // Rock vs ship
+    const shipRect = { x: ship.x-ship.w/2, y: ship.y-ship.h/2, w: ship.w, h: ship.h };
+    for (let i=rocks.length-1;i>=0;i--) {
+      const r = rocks[i];
+      if (aabbCircle(shipRect.x, shipRect.y, shipRect.w, shipRect.h, r.x, r.y, r.r)) {
+        rocks.splice(i,1);
+        hp -= 1;
+        beep(180, 0.08, 0.06);
+        if (hp <= 0) return lose();
+      }
+    }
+
+    // Cleanup rocks
+    rocks = rocks.filter(r => r.y < H+40);
+
+    // Win condition: survive enough time
+    if (elapsed >= SURVIVE_TIME) win();
+
+    // Status
+    statusEl.textContent = `⏱ ${Math.max(0, (SURVIVE_TIME-elapsed)).toFixed(1)}s | ❤️ ${hp} | ⭐ 점수 ${score}  (행성까지 생존!)`;
+  }
+
+  function drawPixelShip(x, y) {
+    // simple pixel ship (no external assets)
+    const px = 3;
+    const sx = Math.round(x), sy = Math.round(y);
+    const data = [
+      "00100",
+      "01110",
+      "11111",
+      "01110",
+      "10101"
+    ];
+    for (let r=0;r<data.length;r++){
+      for (let c=0;c<data[r].length;c++){
+        if (data[r][c]==="1"){
+          ctx.fillRect(sx + (c-2)*px, sy + (r-2)*px, px, px);
+        }
+      }
+    }
+    // engine flame
+    if (running && Math.random()<0.8) {
+      ctx.fillRect(sx-1, sy+10, 3, 4);
+    }
+  }
+
+  function drawPlanetProgress() {
+    // A simple "planet approaching" indicator at top-right
+    const p = Math.min(1, elapsed / SURVIVE_TIME);
+    const cx = W-70, cy = 70;
+    ctx.save();
+    ctx.globalAlpha = 0.9;
+    ctx.strokeStyle = "#2b3a5d";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 28, 0, Math.PI*2);
+    ctx.stroke();
+
+    // planet
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = "#4fd0ff";
+    ctx.beginPath();
+    ctx.arc(cx, cy, 10 + 14*p, 0, Math.PI*2);
+    ctx.fill();
+
+    // orbit dot
+    const ang = -Math.PI/2 + p*2*Math.PI;
+    ctx.fillStyle = "#7cf7c1";
+    ctx.beginPath();
+    ctx.arc(cx + Math.cos(ang)*28, cy + Math.sin(ang)*28, 3, 0, Math.PI*2);
+    ctx.fill();
+
+    ctx.restore();
+  }
+
+  function draw(dt) {
+    // background
+    ctx.clearRect(0,0,W,H);
+
+    // stars
+    ctx.fillStyle = "#ffffff";
+    for (const s of stars) ctx.fillRect(s.x, s.y, 1, 1);
+
+    // HUD strip
+    ctx.fillStyle = "rgba(15,23,48,0.9)";
+    ctx.fillRect(0,0,W,44);
+    ctx.fillStyle = "#e8eefc";
+    ctx.font = "14px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
+    ctx.fillText(`TIME ${Math.max(0,(SURVIVE_TIME-elapsed)).toFixed(1)}  HP ${hp}  SCORE ${score}`, 14, 28);
+
+    // rocks
+    for (const r of rocks) {
+      ctx.fillStyle = "#c7d2ff";
+      ctx.beginPath();
+      ctx.arc(r.x, r.y, r.r, 0, Math.PI*2);
+      ctx.fill();
+      ctx.fillStyle = "#8aa0d6";
+      ctx.fillRect(r.x - r.r/2, r.y - r.r/2, 3, 3);
+    }
+
+    // bullets
+    ctx.fillStyle = "#7cf7c1";
+    for (const b of bullets) ctx.fillRect(b.x-1, b.y-6, 2, 8);
+
+    // ship
+    ctx.fillStyle = "#ffd36a";
+    drawPixelShip(ship.x, ship.y);
+
+    // progress planet
+    drawPlanetProgress();
+
+    // ground-ish
+    ctx.fillStyle = "rgba(43,58,93,0.35)";
+    ctx.fillRect(0,H-30,W,30);
+
+    if (!running) {
+      ctx.fillStyle = "rgba(0,0,0,0.55)";
+      ctx.fillRect(0,0,W,H);
+      ctx.fillStyle = "#e8eefc";
+      ctx.font = "20px system-ui, -apple-system, Segoe UI, sans-serif";
+      ctx.fillText("🎂 생일 우주선 미션", 18, 90);
+      ctx.font = "14px system-ui, -apple-system, Segoe UI, sans-serif";
+      ctx.fillStyle = "#9bb0d6";
+      ctx.fillText("장애물을 피하고(또는 쏘고) 60초 버티면 행성 착륙 → 보물상자 오픈!", 18, 118);
+      ctx.fillText("Start 버튼 또는 Space로 시작. ← → 로 이동, Space 사격, R 리셋", 18, 140);
+    }
+  }
+
+  function loop(ts) {
+    if (!running) return;
+    if (!last) last = ts;
+    const dt = Math.min(0.033, (ts-last)/1000);
+    last = ts;
+    update(dt);
+    draw(dt);
+    requestAnimationFrame(loop);
+  }
+
+  // Controls
+  window.addEventListener('keydown', (e) => {
+    if (e.code === 'Space') { e.preventDefault(); keys.add('Space'); if (!running) start(); }
+    else keys.add(e.code);
+    if (e.code === 'KeyR') reset();
+  });
+  window.addEventListener('keyup', (e) => {
+    if (e.code === 'Space') keys.delete('Space');
+    else keys.delete(e.code);
+  });
+
+  btnStart.addEventListener('click', () => running ? null : start());
+  btnMute.addEventListener('click', () => {
+    soundOn = !soundOn;
+    btnMute.textContent = `Sound: ${soundOn ? 'ON' : 'OFF'}`;
+    if (soundOn) beep(660, 0.04, 0.03);
+  });
+
+  btnOpenChest.addEventListener('click', () => {
+    giftArea.style.display = "block";
+    beep(1046, 0.06, 0.05);
+    beep(1318, 0.08, 0.05);
+  });
+  btnClose.addEventListener('click', () => {
+    modal.style.display = "none";
+  });
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) modal.style.display = "none";
+  });
+
+  // init
+  reset();
+})();
+</script>
+</body>
+</html>
