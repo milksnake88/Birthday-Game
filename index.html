@@ -47,6 +47,22 @@
     </div>
 
     <canvas id="c" width="720" height="420"></canvas>
+    <!-- Mobile touch controls -->
+    <div id="touchUI" style="
+      width:min(720px,96vw);
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:12px;
+      margin-top:8px;
+      touch-action:none;
+    ">
+      <div style="display:flex; gap:10px;">
+        <button id="btnLeft"  style="width:86px; height:58px; font-size:18px;">◀</button>
+        <button id="btnRight" style="width:86px; height:58px; font-size:18px;">▶</button>
+      </div>
+      <button id="btnFire" style="width:120px; height:58px; font-size:16px;">FIRE</button>
+    </div>
 
     <div class="panel">
       <span id="status">미션: 우주를 뚫고 60초 생존해 행성에 착륙하라 🚀</span>
@@ -93,6 +109,41 @@
   const fakeCodeEl = document.getElementById('fakeCode');
   fakeCodeEl.textContent = FAKE_CODE;
 
+  // Touch UI refs
+  const touchUI = document.getElementById('touchUI');
+  const btnLeft = document.getElementById('btnLeft');
+  const btnRight = document.getElementById('btnRight');
+  const btnFire = document.getElementById('btnFire');
+
+  // Helper: press/release -> keys set
+  function press(code) { keys.add(code); if (code === 'Space' && !running) start(); }
+  function release(code) { keys.delete(code); }
+
+  // Prevent scroll while playing (important on mobile)
+  touchUI.addEventListener('touchstart', (e) => e.preventDefault(), { passive:false });
+  touchUI.addEventListener('touchmove',  (e) => e.preventDefault(), { passive:false });
+
+  function bindHold(btn, code) {
+    const down = (e) => { e.preventDefault(); press(code); };
+    const up   = (e) => { e.preventDefault(); release(code); };
+
+    // Touch
+    btn.addEventListener('touchstart', down, { passive:false });
+    btn.addEventListener('touchend', up, { passive:false });
+    btn.addEventListener('touchcancel', up, { passive:false });
+
+    // Mouse (PC에서 클릭 테스트용)
+    btn.addEventListener('mousedown', down);
+    window.addEventListener('mouseup', up);
+  }
+
+  bindHold(btnLeft, 'ArrowLeft');
+  bindHold(btnRight, 'ArrowRight');
+
+  // FIRE는 누르는 동안 계속 발사되게 Space처럼 처리
+  bindHold(btnFire, 'Space');
+
+  
   // Simple sound
   let soundOn = true;
   const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -128,6 +179,7 @@
   let shards = [];            // 우주비(탄막)
   let pickups = [];           // 파워업 상자
   let stars = [];
+  let fireworks = [];
 
   // Events
   let eventTimer = 0;
@@ -178,6 +230,7 @@
 
   function win() {
     running = false;
+    spawnFireworks(140); // 숫자 높을수록 화려
     btnStart.textContent = "Restart";
     modal.style.display = "flex";
     beep(880, 0.08, 0.05); beep(988, 0.08, 0.05); beep(1175, 0.10, 0.06);
@@ -203,6 +256,18 @@
     const x = 40 + Math.random()*(W-80);
     const type = Math.random() < 0.5 ? "shield" : "rapid";
     pickups.push({ x, y:-20, vy: 180, type });
+  }
+
+  function spawnFireworks(count=80) {
+    for (let i=0;i<count;i++) {
+      fireworks.push({
+        x: W/2,
+        y: H/2,
+        vx: (Math.random()-0.5)*500,
+        vy: (Math.random()-0.5)*500,
+        life: 1.2 + Math.random()*0.6
+      });
+    }
   }
 
   function shoot() {
@@ -267,9 +332,8 @@
       eventLeft -= dt;
       if (currentEvent === "meteor") {
         // 우주비 탄막: 작은 파편 생성
-        const rate = 14 + elapsed*0.12; // sec^-1
+        const rate = 6 + elapsed*0.12; // sec^-1
         const n = Math.random() < rate*dt ? 1 : 0;
-        if (shards.length > 25) return;
         for (let i=0;i<n;i++) {
           const x = Math.random()*W;
           const vy = 260 + Math.random()*240;
@@ -299,7 +363,7 @@
     ship.x = Math.max(20, Math.min(W-20, ship.x));
 
     // Shooting
-    if (keys.has('Space')) shoot();
+    shoot();
 
     // Bullets
     for (const b of bullets) b.y += b.vy * dt;
@@ -414,6 +478,15 @@
     // Status
     statusEl.textContent =
       `🎂 황지짱 생축 | ⏱ ${(SURVIVE_TIME-elapsed).toFixed(1)}s | ❤️ ${hp} | 🛡️ ${shield>0?shield.toFixed(1):'0.0'} | ⚡ ${rapid>0?rapid.toFixed(1):'0.0'} | ⭐ ${score}`;
+    // fireworks update
+    for (const f of fireworks) {
+      f.x += f.vx * dt;
+      f.y += f.vy * dt;
+      f.life -= dt;
+    }
+    
+    fireworks = fireworks.filter(f => f.life > 0);
+
   }
 
   function drawPixelShip(x, y) {
@@ -611,6 +684,33 @@
     drawToast();
 
     if (!running) drawOverlayTitle();
+
+        // fireworks draw
+    for (const f of fireworks) {
+    
+      ctx.globalAlpha = Math.max(0, f.life);
+    
+      ctx.fillStyle = `hsl(${Math.random()*360},100%,70%)`;
+    
+      ctx.fillRect(f.x, f.y, 4, 4);
+    }
+    
+    ctx.globalAlpha = 1;
+    
+    // 생일 텍스트
+    if (!running && fireworks.length > 0) {
+    
+      ctx.fillStyle = "#ffffff";
+    
+      ctx.font = "900 42px system-ui";
+    
+      ctx.textAlign = "center";
+    
+      ctx.fillText("🎂 황지짱 생일축하해!!!! 🎂", W/2, H/2);
+    
+      ctx.textAlign = "start";
+    }
+
   }
 
   function loop(ts) {
