@@ -49,7 +49,7 @@
     <canvas id="c" width="720" height="420"></canvas>
 
     <div class="panel">
-      <span id="status">미션: 우주를 뚫고 75초 생존해 행성에 착륙하라 🚀</span>
+      <span id="status">미션: 우주를 뚫고 60초 생존해 행성에 착륙하라 🚀</span>
     </div>
   </div>
 
@@ -78,7 +78,7 @@
   const W = canvas.width, H = canvas.height;
 
   // ---- CONFIG ----
-  const SURVIVE_TIME = 75;                 // 난이도↑: 더 오래 생존
+  const SURVIVE_TIME = 60;                 // 난이도↑: 더 오래 생존
   const FAKE_CODE = "HZ-BDAY-9Q7K-2M5P";   // 가짜 코드
   // ---------------
 
@@ -172,7 +172,7 @@
     running = true;
     btnStart.textContent = "Running…";
     audioCtx.resume?.();
-    toast("🚀 출발! 황지짱 생축 우주를 뚫어라!", 2.2);
+    toast("🚀 출발! 황지짱 우주를 뚫어라!", 2.2);
     requestAnimationFrame(loop);
   }
 
@@ -228,17 +228,17 @@
     if (roll < 0.45) {
       currentEvent = "blackhole";
       eventLeft = 6.5;
-      toast("🌀 이벤트: 블랙홀! 좌우로 끌려간다!", 2.3);
+      toast("🌀 블랙홀! 좌우로 끌려간다!", 2.3);
       beep(200, 0.10, 0.05);
     } else {
       currentEvent = "meteor";
       eventLeft = 6.0;
-      toast("☄️ 이벤트: 우주비(탄막)! 정신 차려!", 2.3);
+      toast("☄️ 케이크 운석비! 생일 축하다!!", 2.3);
       beep(260, 0.10, 0.05);
     }
 
-    // 이벤트 시작 시 60% 확률로 파워업 상자 1개
-    if (Math.random() < 0.6) spawnPickup();
+    // 이벤트 시작 시 90% 확률로 파워업 상자 1개
+    if (Math.random() < 0.9) spawnPickup();
   }
 
   function update(dt) {
@@ -269,6 +269,7 @@
         // 우주비 탄막: 작은 파편 생성
         const rate = 14 + elapsed*0.12; // sec^-1
         const n = Math.random() < rate*dt ? 1 : 0;
+        if (shards.length > 25) return;
         for (let i=0;i<n;i++) {
           const x = Math.random()*W;
           const vy = 260 + Math.random()*240;
@@ -489,7 +490,7 @@
 
     ctx.fillStyle = "#9bb0d6";
     ctx.font = "14px system-ui, -apple-system, Segoe UI, sans-serif";
-    ctx.fillText("미션: 75초 생존 + 이벤트 견뎌내기 → 행성 착륙 → 보물상자", 22, 116);
+    ctx.fillText("미션: 60초 생존 + 이벤트 견뎌내기 → 행성 착륙 → 보물상자", 22, 116);
     ctx.fillText("← → 이동 / Space 사격 / R 리셋  (난이도: 상)", 22, 138);
 
     ctx.fillStyle = "#7cf7c1";
@@ -561,11 +562,24 @@
       ctx.fillRect(r.x - r.r/2, r.y - r.r/2, 3, 3);
     }
 
-    // shards
-    ctx.fillStyle = "#ff6b6b";
+    // cake meteors 🍰
     for (const s of shards) {
-      ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI*2); ctx.fill();
+    
+      // 케이크 몸통
+      ctx.fillStyle = "#ff9ecb";
+      ctx.fillRect(s.x-6, s.y-4, 12, 8);
+    
+      // 크림
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(s.x-6, s.y-7, 12, 3);
+    
+      // 딸기
+      ctx.fillStyle = "#ff3b6b";
+      ctx.beginPath();
+      ctx.arc(s.x, s.y-9, 2, 0, Math.PI*2);
+      ctx.fill();
     }
+    
 
     // bullets
     ctx.fillStyle = "#7cf7c1";
